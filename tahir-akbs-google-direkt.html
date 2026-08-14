@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tahir Akbs — Birleşik Yapay Zeka</title>
+<style>
+:root{--ink:#16151A;--panel:#1F1D24;--panel-2:#252129;--hair:#34303C;--gold:#C9A227;--teal:#4FA187;--violet:#9C7BD9;--text:#EDE7DA;--muted:#9C93A6;--err:#C1544A}
+*{box-sizing:border-box}html,body{margin:0;padding:0}body{background:var(--ink);color:var(--text);font-family:monospace;min-height:100vh}
+header{display:flex;align-items:center;gap:16px;padding:16px 22px;border-bottom:1px solid var(--hair);background:linear-gradient(180deg,var(--panel-2),var(--ink))}
+header h1{margin:0;font-size:22px}.tagline{color:var(--muted);font-size:12px;margin-top:3px}.htitle{display:flex;flex-direction:column;flex:1}
+.top-btn{display:inline-flex;align-items:center;text-decoration:none;color:var(--text);border:1px solid var(--hair);padding:9px 13px;border-radius:6px;font:12px monospace;background:var(--panel)}
+.top-btn:hover{border-color:var(--gold);color:var(--gold)}
+main{max-width:900px;margin:0 auto;padding:20px 18px 140px}#thread{display:flex;flex-direction:column;gap:22px}
+.empty-hint{color:var(--muted);font-size:13px;text-align:center;padding:60px 20px;line-height:1.8}
+.msg-user{align-self:flex-end;background:var(--panel);border:1px solid var(--hair);border-radius:10px 10px 2px 10px;padding:12px 16px;max-width:80%;font-size:14px}
+.block{border:1px solid var(--hair);border-radius:10px;overflow:hidden;background:var(--panel)}.block-head{padding:10px 16px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--hair);background:var(--panel-2)}
+.block-body{padding:14px 16px;font-size:14px;line-height:1.7;white-space:pre-wrap}.raw{border-top:1px solid var(--hair)}.raw summary{padding:9px 16px;color:var(--muted);cursor:pointer;font-size:11px}.engine-answer{padding:10px 16px 14px;border-top:1px solid var(--hair);line-height:1.65}.eng-label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}.ok{color:var(--teal)}.fail{color:var(--err)}
+#inputbar{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(0deg,var(--ink) 60%,transparent);padding:20px 18px 22px}
+#inputbar form{max-width:900px;margin:0 auto;display:flex;gap:10px}#q{flex:1;background:var(--panel);border:1px solid var(--hair);color:var(--text);padding:13px 16px;border-radius:8px;font:inherit;outline:none}#sendBtn{background:var(--teal);border:0;padding:0 22px;border-radius:8px;cursor:pointer;font-weight:bold}
+#sendBtn:disabled{opacity:.5;cursor:default}.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--hair);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="htitle"><h1>Tahir Akbs</h1><div class="tagline">birden fazla yapay zekâ motorunu tek yanıtta birleştirir</div></div>
+  <a class="top-btn" href="https://www.google.com/" rel="noopener">Google</a>
+  <a class="top-btn" href="https://aistudio.google.com/" rel="noopener">Google AI</a>
+</header>
+<main><div id="thread"><div class="empty-hint" id="hint">Bir soru sor — sunucudaki aktif motorlar aynı anda çalışır, sonunda tek bir Birleşik Cevap alırsın.</div></div></main>
+<div id="inputbar"><form id="q-form"><input id="q" type="text" placeholder="tahirakbs'e bir şey sor..." autocomplete="off"><button id="sendBtn" type="submit">Sor</button></form></div>
+<script>
+const thread=document.getElementById('thread'), hint=document.getElementById('hint'), form=document.getElementById('q-form'), qInput=document.getElementById('q'), sendBtn=document.getElementById('sendBtn');
+
+function addUserMsg(text){if(hint) hint.remove();const d=document.createElement('div');d.className='msg-user';d.textContent=text;thread.appendChild(d);}
+function makeBlock(){
+ const wrap=document.createElement('div');wrap.className='block';
+ wrap.innerHTML='<div class="block-head"><span class="spin"></span> Cevaplar hazırlanıyor…</div><div class="block-body"></div><details class="raw"><summary>Tekil motor yanıtları</summary><div class="raw-slot"></div></details>';
+ thread.appendChild(wrap);window.scrollTo(0,document.body.scrollHeight);return wrap;
+}
+async function ask(question){
+ const block=makeBlock(), body=block.querySelector('.block-body'), raw=block.querySelector('.raw-slot'), head=block.querySelector('.block-head');
+ try{
+   const res=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question})});
+   const data=await res.json();
+   if(!res.ok) throw new Error(data.error||'Sunucu hatası');
+   for(const r of data.results||[]){
+     const line=document.createElement('div');line.className='engine-answer '+(r.ok?'':'fail');
+     line.innerHTML='<div class="eng-label">'+(r.ok?'✓ ':'✗ ')+r.name+'</div>';
+     const text=document.createElement('div');text.textContent=r.ok?r.text:(r.error||'Yanıt alınamadı');
+     line.appendChild(text);raw.appendChild(line);
+   }
+   head.innerHTML='🔗 Birleşik Cevap';body.textContent=data.finalText||'Yanıt alınamadı.';
+ }catch(err){head.textContent='⚠ Hata';body.textContent=err.message;}
+}
+form.addEventListener('submit',async e=>{e.preventDefault();const q=qInput.value.trim();if(!q)return;addUserMsg(q);qInput.value='';sendBtn.disabled=true;try{await ask(q)}finally{sendBtn.disabled=false;qInput.focus()}});
+</script>
+</body>
+</html>
